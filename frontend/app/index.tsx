@@ -43,6 +43,7 @@ export default function AdminPanel() {
   const [counts, setCounts] = useState<any>({});
   const [toast, setToast] = useState<ToastMessage | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(!isMobile);
+  const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   useEffect(() => {
     fetchCounts();
@@ -99,62 +100,95 @@ export default function AdminPanel() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const confirmAction = (title: string, message: string, onConfirm: () => Promise<void>) => {
-    Alert.alert(title, message, [
-      { text: 'Cancel', style: 'cancel' },
-      { 
-        text: 'Confirm', 
-        onPress: async () => {
-          try {
-            await onConfirm();
-          } catch (error) {
-            console.error('Confirmation action failed:', error);
-          }
-        }, 
-        style: 'destructive' 
-      },
-    ]);
+  const confirmAction = (
+    title: string,
+    message: string,
+    sr: number,
+    onConfirm: () => Promise<void>
+  ) => {
+    Alert.alert(
+      title,
+      message,
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Confirm',
+          onPress: () => {
+            // Set loading immediately
+            setActionLoading(sr);
+            // Execute async operation
+            onConfirm()
+              .catch((error) => {
+                console.error('Confirmation action failed:', error);
+                showToast('Operation failed: ' + (error.message || 'Unknown error'), 'error');
+              })
+              .finally(() => {
+                setActionLoading(null);
+              });
+          },
+          style: 'destructive',
+        },
+      ],
+      { cancelable: true }
+    );
   };
 
   const handleApprove = async (sr: number) => {
+    setActionLoading(sr);
     try {
+      console.log('Approving SR:', sr, 'DB:', selectedDb, 'URL:', `${API_BASE_URL}/${selectedDb}/approve/${sr}`);
       const response = await axios.post(`${API_BASE_URL}/${selectedDb}/approve/${sr}`);
+      console.log('Approve response:', response.data);
       if (response.data.success) {
-        showToast('Approved successfully!', 'success');
+        showToast('✅ Approved successfully!', 'success');
         await fetchData();
         await fetchCounts();
+      } else {
+        showToast('❌ Failed to approve', 'error');
       }
     } catch (error: any) {
-      showToast('Error: ' + error.response?.data?.detail || error.message, 'error');
+      console.error('Approve error:', error);
+      const errorMsg = error.response?.data?.detail || error.message || 'Network error';
+      showToast('❌ Error: ' + errorMsg, 'error');
+    } finally {
+      setActionLoading(null);
     }
   };
 
   const handleReject = async (sr: number) => {
-    confirmAction('Reject User', 'Are you sure you want to reject this user?', async () => {
+    confirmAction('Reject User', 'Are you sure you want to reject this user?', sr, async () => {
       try {
+        console.log('Rejecting SR:', sr);
         const response = await axios.post(`${API_BASE_URL}/${selectedDb}/reject/${sr}`);
+        console.log('Reject response:', response.data);
         if (response.data.success) {
-          showToast('Rejected successfully!', 'success');
+          showToast('✅ Rejected successfully!', 'success');
           await fetchData();
           await fetchCounts();
         }
       } catch (error: any) {
-        showToast('Error: ' + error.response?.data?.detail || error.message, 'error');
+        console.error('Reject error:', error);
+        const errorMsg = error.response?.data?.detail || error.message || 'Network error';
+        throw new Error(errorMsg);
       }
     });
   };
 
   const handleDeactivate = async (sr: number) => {
-    confirmAction('Deactivate User', 'Move this user back to pending?', async () => {
+    confirmAction('Deactivate User', 'Move this user back to pending?', sr, async () => {
       try {
+        console.log('Deactivating SR:', sr);
         const response = await axios.post(`${API_BASE_URL}/${selectedDb}/deactivate/${sr}`);
+        console.log('Deactivate response:', response.data);
         if (response.data.success) {
-          showToast('Deactivated successfully!', 'success');
+          showToast('✅ Deactivated successfully!', 'success');
           await fetchData();
           await fetchCounts();
         }
       } catch (error: any) {
-        showToast('Error: ' + error.response?.data?.detail || error.message, 'error');
+        console.error('Deactivate error:', error);
+        const errorMsg = error.response?.data?.detail || error.message || 'Network error';
+        throw new Error(errorMsg);
       }
     });
   };
@@ -163,31 +197,43 @@ export default function AdminPanel() {
     confirmAction(
       'Permanent Delete',
       'This will permanently delete the user. This action cannot be undone!',
+      sr,
       async () => {
         try {
+          console.log('Deleting SR:', sr);
           const response = await axios.delete(`${API_BASE_URL}/${selectedDb}/delete/${sr}`);
+          console.log('Delete response:', response.data);
           if (response.data.success) {
-            showToast('Deleted permanently!', 'success');
+            showToast('✅ Deleted permanently!', 'success');
             await fetchData();
             await fetchCounts();
           }
         } catch (error: any) {
-          showToast('Error: ' + error.response?.data?.detail || error.message, 'error');
+          console.error('Delete error:', error);
+          const errorMsg = error.response?.data?.detail || error.message || 'Network error';
+          throw new Error(errorMsg);
         }
       }
     );
   };
 
   const handleReactivate = async (sr: number) => {
+    setActionLoading(sr);
     try {
+      console.log('Reactivating SR:', sr);
       const response = await axios.post(`${API_BASE_URL}/neondb/reactivate/${sr}`);
+      console.log('Reactivate response:', response.data);
       if (response.data.success) {
-        showToast('Reactivated successfully!', 'success');
+        showToast('✅ Reactivated successfully!', 'success');
         await fetchData();
         await fetchCounts();
       }
     } catch (error: any) {
-      showToast('Error: ' + error.response?.data?.detail || error.message, 'error');
+      console.error('Reactivate error:', error);
+      const errorMsg = error.response?.data?.detail || error.message || 'Network error';
+      showToast('❌ Error: ' + errorMsg, 'error');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -335,16 +381,26 @@ export default function AdminPanel() {
               {activeTab === 'pending' && (
                 <>
                   <TouchableOpacity
-                    style={[styles.button, styles.buttonApprove]}
+                    style={[styles.button, styles.buttonApprove, actionLoading === item.sr && styles.buttonDisabled]}
                     onPress={() => handleApprove(item.sr)}
+                    disabled={actionLoading === item.sr}
                   >
-                    <Text style={styles.buttonText}>Approve</Text>
+                    {actionLoading === item.sr ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Approve</Text>
+                    )}
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.button, styles.buttonReject]}
+                    style={[styles.button, styles.buttonReject, actionLoading === item.sr && styles.buttonDisabled]}
                     onPress={() => handleReject(item.sr)}
+                    disabled={actionLoading === item.sr}
                   >
-                    <Text style={styles.buttonText}>Reject</Text>
+                    {actionLoading === item.sr ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Reject</Text>
+                    )}
                   </TouchableOpacity>
                 </>
               )}
@@ -352,16 +408,26 @@ export default function AdminPanel() {
               {activeTab === 'approved' && (
                 <>
                   <TouchableOpacity
-                    style={[styles.button, styles.buttonDeactivate]}
+                    style={[styles.button, styles.buttonDeactivate, actionLoading === item.sr && styles.buttonDisabled]}
                     onPress={() => handleDeactivate(item.sr)}
+                    disabled={actionLoading === item.sr}
                   >
-                    <Text style={styles.buttonText}>Deactivate</Text>
+                    {actionLoading === item.sr ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Deactivate</Text>
+                    )}
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.button, styles.buttonDelete]}
+                    style={[styles.button, styles.buttonDelete, actionLoading === item.sr && styles.buttonDisabled]}
                     onPress={() => handleDelete(item.sr)}
+                    disabled={actionLoading === item.sr}
                   >
-                    <Text style={styles.buttonText}>Delete</Text>
+                    {actionLoading === item.sr ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Delete</Text>
+                    )}
                   </TouchableOpacity>
                 </>
               )}
@@ -369,16 +435,26 @@ export default function AdminPanel() {
               {activeTab === 'inactive' && isNeonDb && (
                 <>
                   <TouchableOpacity
-                    style={[styles.button, styles.buttonReactivate]}
+                    style={[styles.button, styles.buttonReactivate, actionLoading === item.sr && styles.buttonDisabled]}
                     onPress={() => handleReactivate(item.sr)}
+                    disabled={actionLoading === item.sr}
                   >
-                    <Text style={styles.buttonText}>Reactivate</Text>
+                    {actionLoading === item.sr ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Reactivate</Text>
+                    )}
                   </TouchableOpacity>
                   <TouchableOpacity
-                    style={[styles.button, styles.buttonDelete]}
+                    style={[styles.button, styles.buttonDelete, actionLoading === item.sr && styles.buttonDisabled]}
                     onPress={() => handleDelete(item.sr)}
+                    disabled={actionLoading === item.sr}
                   >
-                    <Text style={styles.buttonText}>Delete</Text>
+                    {actionLoading === item.sr ? (
+                      <ActivityIndicator size="small" color="#fff" />
+                    ) : (
+                      <Text style={styles.buttonText}>Delete</Text>
+                    )}
                   </TouchableOpacity>
                 </>
               )}
@@ -656,6 +732,9 @@ const styles = StyleSheet.create({
   },
   buttonReactivate: {
     backgroundColor: '#3b82f6',
+  },
+  buttonDisabled: {
+    opacity: 0.5,
   },
   buttonText: {
     color: '#fff',
