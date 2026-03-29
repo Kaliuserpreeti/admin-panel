@@ -316,26 +316,27 @@ export default function AdminPanel() {
 
     return (
       <View key={item.sr} style={styles.tableRow}>
-        <ScrollView horizontal showsHorizontalScrollIndicator={true}>
-          <View style={styles.rowContent}>
-            <View style={styles.cell}>
-              <Text style={styles.cellLabel}>SR</Text>
-              <Text style={styles.cellValue}>{item.sr}</Text>
+        <View style={styles.rowContent}>
+          {/* Main Info Card */}
+          <View style={styles.infoCard}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLabel}>SR:</Text>
+              <Text style={styles.infoValue}>{item.sr}</Text>
             </View>
 
             {isNeonDb ? (
               <>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>User ID</Text>
-                  <Text style={styles.cellValue}>{item.userid || '-'}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>User ID:</Text>
+                  <Text style={styles.infoValue}>{item.userid || '-'}</Text>
                 </View>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>PACS Name</Text>
-                  <Text style={styles.cellValue}>{item.pacs_name || '-'}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>PACS:</Text>
+                  <Text style={styles.infoValue}>{item.pacs_name || '-'}</Text>
                 </View>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>Created On</Text>
-                  <Text style={styles.cellValue}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Date:</Text>
+                  <Text style={styles.infoValue}>
                     {item.created_on
                       ? new Date(item.created_on).toLocaleDateString()
                       : item.approved_on
@@ -346,123 +347,124 @@ export default function AdminPanel() {
               </>
             ) : (
               <>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>
-                    {selectedDb === 'idpass' ? 'User Name' : 'User ID'}
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>
+                    {selectedDb === 'idpass' ? 'User Name:' : 'User ID:'}
                   </Text>
-                  <Text style={styles.cellValue}>{item[userIdField] || '-'}</Text>
+                  <Text style={styles.infoValue}>{item[userIdField] || '-'}</Text>
                 </View>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>Name</Text>
-                  <Text style={styles.cellValue}>{item.name || '-'}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Name:</Text>
+                  <Text style={styles.infoValue}>{item.name || '-'}</Text>
                 </View>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>PACS</Text>
-                  <Text style={styles.cellValue}>{item.pacs_name || '-'}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>PACS:</Text>
+                  <Text style={styles.infoValue}>{item.pacs_name || '-'}</Text>
                 </View>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>Branch</Text>
-                  <Text style={styles.cellValue}>{item.branch || '-'}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Branch:</Text>
+                  <Text style={styles.infoValue}>{item.branch || '-'}</Text>
                 </View>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>District</Text>
-                  <Text style={styles.cellValue}>{item.dist || '-'}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>District:</Text>
+                  <Text style={styles.infoValue}>{item.dist || '-'}</Text>
                 </View>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>State</Text>
-                  <Text style={styles.cellValue}>{item.state || '-'}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>State:</Text>
+                  <Text style={styles.infoValue}>{item.state || '-'}</Text>
                 </View>
-                <View style={styles.cell}>
-                  <Text style={styles.cellLabel}>Mobile</Text>
-                  <Text style={styles.cellValue}>{item.mobile || '-'}</Text>
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>Mobile:</Text>
+                  <Text style={styles.infoValue}>{item.mobile || '-'}</Text>
                 </View>
               </>
             )}
-
-            <View style={styles.actionsCell}>
-              {activeTab === 'pending' && (
-                <>
-                  <TouchableOpacity
-                    style={[styles.button, styles.buttonApprove, actionLoading === item.sr && styles.buttonDisabled]}
-                    onPress={() => handleApprove(item.sr)}
-                    disabled={actionLoading === item.sr}
-                  >
-                    {actionLoading === item.sr ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.buttonText}>Approve</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.button, styles.buttonReject, actionLoading === item.sr && styles.buttonDisabled]}
-                    onPress={() => handleReject(item.sr)}
-                    disabled={actionLoading === item.sr}
-                  >
-                    {actionLoading === item.sr ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.buttonText}>Reject</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
-
-              {activeTab === 'approved' && (
-                <>
-                  <TouchableOpacity
-                    style={[styles.button, styles.buttonDeactivate, actionLoading === item.sr && styles.buttonDisabled]}
-                    onPress={() => handleDeactivate(item.sr)}
-                    disabled={actionLoading === item.sr}
-                  >
-                    {actionLoading === item.sr ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.buttonText}>Deactivate</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.button, styles.buttonDelete, actionLoading === item.sr && styles.buttonDisabled]}
-                    onPress={() => handleDelete(item.sr)}
-                    disabled={actionLoading === item.sr}
-                  >
-                    {actionLoading === item.sr ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.buttonText}>Delete</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
-
-              {activeTab === 'inactive' && isNeonDb && (
-                <>
-                  <TouchableOpacity
-                    style={[styles.button, styles.buttonReactivate, actionLoading === item.sr && styles.buttonDisabled]}
-                    onPress={() => handleReactivate(item.sr)}
-                    disabled={actionLoading === item.sr}
-                  >
-                    {actionLoading === item.sr ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.buttonText}>Reactivate</Text>
-                    )}
-                  </TouchableOpacity>
-                  <TouchableOpacity
-                    style={[styles.button, styles.buttonDelete, actionLoading === item.sr && styles.buttonDisabled]}
-                    onPress={() => handleDelete(item.sr)}
-                    disabled={actionLoading === item.sr}
-                  >
-                    {actionLoading === item.sr ? (
-                      <ActivityIndicator size="small" color="#fff" />
-                    ) : (
-                      <Text style={styles.buttonText}>Delete</Text>
-                    )}
-                  </TouchableOpacity>
-                </>
-              )}
-            </View>
           </View>
-        </ScrollView>
+
+          {/* Action Buttons - ALWAYS VISIBLE */}
+          <View style={styles.actionButtonsContainer}>
+            {activeTab === 'pending' && (
+              <>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.buttonApprove, actionLoading === item.sr && styles.buttonDisabled]}
+                  onPress={() => handleApprove(item.sr)}
+                  disabled={actionLoading === item.sr}
+                >
+                  {actionLoading === item.sr ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>✓ Approve</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.buttonReject, actionLoading === item.sr && styles.buttonDisabled]}
+                  onPress={() => handleReject(item.sr)}
+                  disabled={actionLoading === item.sr}
+                >
+                  {actionLoading === item.sr ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>✕ Reject</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+
+            {activeTab === 'approved' && (
+              <>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.buttonDeactivate, actionLoading === item.sr && styles.buttonDisabled]}
+                  onPress={() => handleDeactivate(item.sr)}
+                  disabled={actionLoading === item.sr}
+                >
+                  {actionLoading === item.sr ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>⟲ Deactivate</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.buttonDelete, actionLoading === item.sr && styles.buttonDisabled]}
+                  onPress={() => handleDelete(item.sr)}
+                  disabled={actionLoading === item.sr}
+                >
+                  {actionLoading === item.sr ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>🗑 Delete</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+
+            {activeTab === 'inactive' && isNeonDb && (
+              <>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.buttonReactivate, actionLoading === item.sr && styles.buttonDisabled]}
+                  onPress={() => handleReactivate(item.sr)}
+                  disabled={actionLoading === item.sr}
+                >
+                  {actionLoading === item.sr ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>↻ Reactivate</Text>
+                  )}
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.actionButton, styles.buttonDelete, actionLoading === item.sr && styles.buttonDisabled]}
+                  onPress={() => handleDelete(item.sr)}
+                  disabled={actionLoading === item.sr}
+                >
+                  {actionLoading === item.sr ? (
+                    <ActivityIndicator size="small" color="#fff" />
+                  ) : (
+                    <Text style={styles.actionButtonText}>🗑 Delete</Text>
+                  )}
+                </TouchableOpacity>
+              </>
+            )}
+          </View>
+        </View>
       </View>
     );
   };
@@ -688,37 +690,57 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#e5e7eb',
     backgroundColor: '#fff',
+    padding: 16,
   },
   rowContent: {
+    width: '100%',
+  },
+  infoCard: {
+    backgroundColor: '#f9fafb',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 12,
+  },
+  infoRow: {
     flexDirection: 'row',
-    padding: 16,
-    minWidth: '100%',
+    justifyContent: 'space-between',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: '#e5e7eb',
   },
-  cell: {
-    marginRight: 24,
-    minWidth: 120,
-  },
-  cellLabel: {
-    fontSize: 12,
+  infoLabel: {
+    fontSize: 13,
     color: '#6b7280',
-    marginBottom: 4,
     fontWeight: '600',
+    flex: 1,
   },
-  cellValue: {
+  infoValue: {
     fontSize: 14,
     color: '#1f2937',
+    fontWeight: '500',
+    flex: 2,
+    textAlign: 'right',
   },
-  actionsCell: {
+  actionButtonsContainer: {
     flexDirection: 'row',
-    alignItems: 'center',
+    flexWrap: 'wrap',
     gap: 8,
-    marginLeft: 16,
+    marginTop: 8,
   },
-  button: {
+  actionButton: {
+    flex: 1,
+    minWidth: '45%',
+    paddingVertical: 14,
     paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 6,
-    marginHorizontal: 4,
+    borderRadius: 8,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginVertical: 4,
+  },
+  actionButtonText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
   },
   buttonApprove: {
     backgroundColor: '#10b981',
