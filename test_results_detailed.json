@@ -1,0 +1,304 @@
+{
+  "health_check": {
+    "status": "fail",
+    "details": {
+      "error": "Expecting value: line 1 column 1 (char 0)"
+    }
+  },
+  "counts_api": {
+    "status": "pass",
+    "details": {
+      "neondb": {
+        "pending": 0,
+        "approved": 11,
+        "inactive": 0
+      },
+      "pmfby": {
+        "pending": 5,
+        "approved": 59
+      },
+      "krp": {
+        "pending": 0,
+        "approved": 67
+      },
+      "byajanudan": {
+        "pending": 0,
+        "approved": 24
+      },
+      "idpass": {
+        "pending": 0,
+        "approved": 58
+      }
+    }
+  },
+  "database_operations": {
+    "neondb": {
+      "pending": {
+        "status": "pass",
+        "count": 0,
+        "sample_data": []
+      },
+      "approved": {
+        "status": "pass",
+        "count": 11,
+        "sample_data": [
+          {
+            "sr": 11,
+            "userid": "9753226422",
+            "user_pass_hash": "Kham@335",
+            "active": true,
+            "approved_on": "2026-03-28T09:28:51.473124",
+            "pacs_name": "Khamhariya 335",
+            "last_access_time": null
+          },
+          {
+            "sr": 10,
+            "userid": "9753534277",
+            "user_pass_hash": "123456",
+            "active": true,
+            "approved_on": "2026-03-28T09:28:48.288218",
+            "pacs_name": "khapradih",
+            "last_access_time": null
+          }
+        ]
+      },
+      "inactive": {
+        "status": "pass",
+        "count": 0,
+        "sample_data": []
+      }
+    },
+    "pmfby": {
+      "pending": {
+        "status": "pass",
+        "count": 5,
+        "sample_data": [
+          {
+            "sr": 163,
+            "user_id": "9690000000",
+            "name": "Rajendra Sendhaw",
+            "pacs_name": "BANK OF INDIA",
+            "branch": "NEMAWAR",
+            "dist": "DEWAS",
+            "state": "https://pmfby.gov.in/",
+            "mobile": 9301992822,
+            "pass_": "karnawad123**"
+          },
+          {
+            "sr": 162,
+            "user_id": "9907015361",
+            "name": "Satish Kumar nandwal",
+            "pacs_name": "Bank of india",
+            "branch": "ujjain",
+            "dist": "ujjai",
+            "state": "https://pmfby.gov.in/",
+            "mobile": 9301992822,
+            "pass_": "Welcome@062023"
+          }
+        ]
+      },
+      "approved": {
+        "status": "pass",
+        "count": 59,
+        "sample_data": [
+          {
+            "sr": 73,
+            "user_id": "9826192463",
+            "name": "mohit verma",
+            "pacs_name": "budeni",
+            "branch": "kharora",
+            "dist": "RAIPUR",
+            "state": "Manoj Chandrakar",
+            "mobile": 8889348872,
+            "approved_on": "2026-03-21T03:12:43.562456",
+            "lastaccesstime": "2026-03-21T03:12:43.562456",
+            "pass_": "@Ma10000"
+          },
+          {
+            "sr": 72,
+            "user_id": "9977636556",
+            "name": "Rajesh Yadaw",
+            "pacs_name": "Bohardih 220",
+            "branch": "Vatgon",
+            "dist": "Baloda Bazar",
+            "state": "MANHARAN SAHU",
+            "mobile": 9770019270,
+            "approved_on": "2025-09-04T10:32:03.400476",
+            "lastaccesstime": "2025-09-04T16:02:11.871132",
+            "pass_": "Boha220@#"
+          }
+        ]
+      }
+    },
+    "krp": {
+      "pending": {
+        "status": "pass",
+        "count": 0,
+        "sample_data": []
+      },
+      "approved": {
+        "status": "pass",
+        "count": 67,
+        "sample_data": [
+          {
+            "sr": 75,
+            "user_name": "8817681092",
+            "name": "Vimal Sahu",
+            "pacs_name": "Saklor RN 475",
+            "branch": "Bhatbhera",
+            "dist": "Baloda Bazar",
+            "state": "VIKRAM SINGH SAHU",
+            "mobile": 9926872674,
+            "approved_on": "2026-03-27T09:50:49.520488",
+            "lastaccesstime": "2026-03-27T21:00:06",
+            "pass_": "Saklor@475"
+          },
+          {
+            "sr": 74,
+            "user_name": "7999191824",
+            "name": "Dilip Singh Chandra",
+            "pacs_name": "Singhra Rn 1524",
+            "branch": "Malkharoda",
+            "dist": "Sakti",
+            "state": "SURENDRA KUMAR CHANDRA",
+            "mobile": 9770169203,
+            "approved_on": "2026-03-26T06:30:12.699548",
+            "lastaccesstime": "2026-03-27T21:58:59",
+            "pass_": "sin@1524"
+          }
+        ]
+      }
+    },
+    "byajanudan": {
+      "pending": {
+        "status": "pass",
+        "count": 0,
+        "sample_data": []
+      },
+      "approved": {
+        "status": "pass",
+        "count": 24,
+        "sample_data": [
+          {
+            "sr": 25,
+            "user_id": "SOC6265",
+            "name": "Poonamchand Jangade",
+            "pacs_name": "Anwari",
+            "branch": "Maraud",
+            "dist": "Dhamtari",
+            "state": "Chhattishgarh",
+            "mobile": 9131240775,
+            "lastaccesstime": "2025-10-13T09:58:29.154838",
+            "approve_on": "2025-10-13T09:58:29.154838",
+            "approved_on": "2025-10-13T09:58:29.154838",
+            "pass_": "Anwari$227"
+          },
+          {
+            "sr": 24,
+            "user_id": "SOC11511",
+            "name": "Bhola Ram Verma",
+            "pacs_name": "Kanpa 356",
+            "branch": "Thelka",
+            "dist": "Bemetara",
+            "state": "Chhattisgarh",
+            "mobile": 8349811811,
+            "lastaccesstime": "2025-10-04T03:29:10.028978",
+            "approve_on": "2025-10-04T03:29:10.028978",
+            "approved_on": "2025-10-04T03:29:10.028978",
+            "pass_": "Kanpa@356##"
+          }
+        ]
+      }
+    },
+    "idpass": {
+      "pending": {
+        "status": "pass",
+        "count": 0,
+        "sample_data": []
+      },
+      "approved": {
+        "status": "pass",
+        "count": 58,
+        "sample_data": [
+          {
+            "sr": 76,
+            "user_name": "OPR91073208002002",
+            "name": "Om Prakash",
+            "pacs_name": "Basdei",
+            "branch": "Surajpur",
+            "dist": "Surajpur",
+            "state": "Chhattisgarh",
+            "mobile": 7000253285,
+            "approved_on": "2026-03-27T05:49:05.070922",
+            "lastaccesstime": "2026-03-27T17:16:54",
+            "pass_": "25091997@Omi"
+          },
+          {
+            "sr": 74,
+            "user_name": "CEO91073207053001",
+            "name": "rajesh kumar sahu",
+            "pacs_name": "patrapali 34",
+            "branch": "ramanujnagar",
+            "dist": "surajpur",
+            "state": "Chhattisgarh",
+            "mobile": 6265483331,
+            "approved_on": "2026-03-23T08:58:50.057156",
+            "lastaccesstime": "2026-03-29T14:09:48",
+            "pass_": "Root@123"
+          }
+        ]
+      }
+    }
+  },
+  "crud_operations": {
+    "pmfby": {
+      "approve": {
+        "status": "pass",
+        "sr_tested": 163,
+        "message": "Approved successfully"
+      },
+      "reject": {
+        "status": "pass",
+        "sr_tested": 162,
+        "message": "Rejected successfully"
+      },
+      "deactivate": {
+        "status": "fail",
+        "sr_tested": 73,
+        "error": "HTTP 500"
+      },
+      "delete": {
+        "status": "pass",
+        "sr_tested": 72,
+        "message": "Deleted permanently"
+      }
+    },
+    "neondb": {
+      "deactivate": {
+        "status": "fail",
+        "sr_tested": 11,
+        "error": "HTTP 500"
+      },
+      "delete": {
+        "status": "pass",
+        "sr_tested": 10,
+        "message": "Deleted permanently"
+      }
+    }
+  },
+  "error_handling": {
+    "status": "fail",
+    "details": {
+      "invalid_dbkey": {
+        "status_code": 500,
+        "expected": 400,
+        "passed": false
+      },
+      "invalid_sr": {
+        "status_code": 404,
+        "expected": 404,
+        "passed": true
+      }
+    }
+  }
+}
