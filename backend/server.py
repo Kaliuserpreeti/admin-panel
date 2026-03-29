@@ -136,6 +136,8 @@ async def get_pending(dbkey: str):
                         item['pass_'] = item.pop('pass')
             
             return {"success": True, "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching pending for {dbkey}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -162,6 +164,8 @@ async def get_approved(dbkey: str):
                         item['pass_'] = item.pop('pass')
             
             return {"success": True, "data": result}
+    except HTTPException:
+        raise
     except Exception as e:
         logger.error(f"Error fetching approved for {dbkey}: {str(e)}")
         raise HTTPException(status_code=500, detail=str(e))
@@ -287,11 +291,15 @@ async def deactivate_user(dbkey: str, sr: int):
                     )
                     
                     # Insert into pending_users
-                    await conn.execute("""
-                        INSERT INTO pending_users (sr, userid, user_pass_hash, created_on, pacs_name)
-                        VALUES ($1, $2, $3, NOW(), $4)
-                        ON CONFLICT (sr) DO NOTHING
-                    """, user['sr'], user['userid'], user['user_pass_hash'], user['pacs_name'])
+                    # Check if already exists in pending
+                    existing = await conn.fetchval(
+                        "SELECT COUNT(*) FROM pending_users WHERE sr = $1", user['sr']
+                    )
+                    if existing == 0:
+                        await conn.execute("""
+                            INSERT INTO pending_users (sr, userid, user_pass_hash, created_on, pacs_name)
+                            VALUES ($1, $2, $3, NOW(), $4)
+                        """, user['sr'], user['userid'], user['user_pass_hash'], user['pacs_name'])
                 else:
                     # Get from ipws
                     ipws = await conn.fetchrow(
@@ -305,22 +313,25 @@ async def deactivate_user(dbkey: str, sr: int):
                     user_value = ipws.get('user_name') or ipws.get('user_id')
                     
                     # Insert back into pending_ipws
-                    if dbkey == "idpass":
-                        await conn.execute("""
-                            INSERT INTO pending_ipws (sr, user_name, pass, name, pacs_name, branch, dist, state, mobile)
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                            ON CONFLICT (sr) DO NOTHING
-                        """, ipws['sr'], user_value, ipws['pass'], ipws['name'],
-                           ipws['pacs_name'], ipws['branch'], ipws['dist'], 
-                           ipws['state'], ipws['mobile'])
-                    else:
-                        await conn.execute("""
-                            INSERT INTO pending_ipws (sr, user_id, pass, name, pacs_name, branch, dist, state, mobile)
-                            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
-                            ON CONFLICT (sr) DO NOTHING
-                        """, ipws['sr'], user_value, ipws['pass'], ipws['name'],
-                           ipws['pacs_name'], ipws['branch'], ipws['dist'], 
-                           ipws['state'], ipws['mobile'])
+                    # Check if already exists
+                    existing = await conn.fetchval(
+                        "SELECT COUNT(*) FROM pending_ipws WHERE sr = $1", ipws['sr']
+                    )
+                    if existing == 0:
+                        if dbkey == "idpass":
+                            await conn.execute("""
+                                INSERT INTO pending_ipws (sr, user_name, pass, name, pacs_name, branch, dist, state, mobile)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                            """, ipws['sr'], user_value, ipws['pass'], ipws['name'],
+                               ipws['pacs_name'], ipws['branch'], ipws['dist'], 
+                               ipws['state'], ipws['mobile'])
+                        else:
+                            await conn.execute("""
+                                INSERT INTO pending_ipws (sr, user_id, pass, name, pacs_name, branch, dist, state, mobile)
+                                VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+                            """, ipws['sr'], user_value, ipws['pass'], ipws['name'],
+                               ipws['pacs_name'], ipws['branch'], ipws['dist'], 
+                               ipws['state'], ipws['mobile'])
                     
                     # Delete from ipws
                     await conn.execute("DELETE FROM ipws WHERE sr = $1", sr)
@@ -423,3 +434,23 @@ app.add_middleware(
 @app.get("/")
 async def root():
     return {"message": "Admin Panel API is running", "databases": list(DB_CONFIGS.keys())}
+
+@api_router.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    db_status = {}
+    for dbkey in DB_CONFIGS.keys():
+        try:
+            pool = db_pools.get(dbkey)
+            if pool:
+                db_status[dbkey] = "connected"
+            else:
+                db_status[dbkey] = "disconnected"
+        except Exception:
+            db_status[dbkey] = "error"
+    
+    return {
+        "status": "healthy",
+        "databases": db_status,
+        "total_databases": len(DB_CONFIGS)
+    }

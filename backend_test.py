@@ -1,533 +1,362 @@
 #!/usr/bin/env python3
 """
 Comprehensive Backend API Testing for Admin Panel
-Tests all endpoints for 5 PostgreSQL databases: neondb, pmfby, krp, byajanudan, idpass
+Testing all fixes mentioned in the review request:
+1. Deactivate operation (CRITICAL - was broken before)
+2. Error handling (HTTPException re-raising)
+3. Health check endpoint
+4. Full CRUD flow test
+5. All database operations
+6. IDPass specific test
 """
 
 import requests
 import json
 import sys
-from typing import Dict, List, Any
-import time
+from typing import Dict, Any, List, Optional
 
-# Backend URL from environment
-BACKEND_URL = "https://record-keeper-35.preview.emergentagent.com"
-API_BASE = f"{BACKEND_URL}/api"
-
-# Database keys to test
-DB_KEYS = ["neondb", "pmfby", "krp", "byajanudan", "idpass"]
+# Backend URL from frontend environment
+BACKEND_URL = "https://record-keeper-35.preview.emergentagent.com/api"
 
 class AdminPanelTester:
     def __init__(self):
-        self.results = {
-            "health_check": {"status": "pending", "details": {}},
-            "counts_api": {"status": "pending", "details": {}},
-            "database_operations": {},
-            "crud_operations": {},
-            "error_handling": {"status": "pending", "details": {}}
+        self.backend_url = BACKEND_URL
+        self.test_results = []
+        self.failed_tests = []
+        
+    def log_test(self, test_name: str, success: bool, details: str = ""):
+        """Log test results"""
+        result = {
+            "test": test_name,
+            "success": success,
+            "details": details
         }
-        self.test_data = {}  # Store actual data for CRUD operations
+        self.test_results.append(result)
+        if not success:
+            self.failed_tests.append(result)
         
-    def log(self, message: str, level: str = "INFO"):
-        """Log test messages"""
-        print(f"[{level}] {message}")
-        
-    def test_health_check(self):
-        """Test the root health check endpoint"""
-        self.log("Testing Health Check Endpoint...")
+        status = "✅ PASS" if success else "❌ FAIL"
+        print(f"{status}: {test_name}")
+        if details:
+            print(f"   Details: {details}")
+    
+    def make_request(self, method: str, endpoint: str, **kwargs) -> tuple[bool, Any]:
+        """Make HTTP request and return (success, response_data)"""
         try:
-            response = requests.get(BACKEND_URL, timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if "message" in data and "databases" in data:
-                    self.results["health_check"]["status"] = "pass"
-                    self.results["health_check"]["details"] = {
-                        "message": data.get("message"),
-                        "databases": data.get("databases"),
-                        "database_count": len(data.get("databases", []))
-                    }
-                    self.log(f"✅ Health check passed: {data['message']}")
-                    self.log(f"✅ Found {len(data.get('databases', []))} databases: {data.get('databases')}")
-                else:
-                    self.results["health_check"]["status"] = "fail"
-                    self.results["health_check"]["details"] = {"error": "Missing required fields in response"}
-                    self.log("❌ Health check failed: Missing required fields", "ERROR")
-            else:
-                self.results["health_check"]["status"] = "fail"
-                self.results["health_check"]["details"] = {"error": f"HTTP {response.status_code}"}
-                self.log(f"❌ Health check failed: HTTP {response.status_code}", "ERROR")
-        except Exception as e:
-            self.results["health_check"]["status"] = "fail"
-            self.results["health_check"]["details"] = {"error": str(e)}
-            self.log(f"❌ Health check failed: {str(e)}", "ERROR")
-    
-    def test_counts_api(self):
-        """Test the counts API endpoint"""
-        self.log("Testing Counts API...")
-        try:
-            response = requests.get(f"{API_BASE}/counts", timeout=10)
-            if response.status_code == 200:
-                data = response.json()
-                if data.get("success") and "data" in data:
-                    counts_data = data["data"]
-                    self.results["counts_api"]["status"] = "pass"
-                    self.results["counts_api"]["details"] = counts_data
-                    
-                    self.log("✅ Counts API passed")
-                    for db_key, counts in counts_data.items():
-                        if db_key == "neondb":
-                            self.log(f"  {db_key}: pending={counts.get('pending', 0)}, approved={counts.get('approved', 0)}, inactive={counts.get('inactive', 0)}")
-                        else:
-                            self.log(f"  {db_key}: pending={counts.get('pending', 0)}, approved={counts.get('approved', 0)}")
-                else:
-                    self.results["counts_api"]["status"] = "fail"
-                    self.results["counts_api"]["details"] = {"error": "Invalid response format"}
-                    self.log("❌ Counts API failed: Invalid response format", "ERROR")
-            else:
-                self.results["counts_api"]["status"] = "fail"
-                self.results["counts_api"]["details"] = {"error": f"HTTP {response.status_code}"}
-                self.log(f"❌ Counts API failed: HTTP {response.status_code}", "ERROR")
-        except Exception as e:
-            self.results["counts_api"]["status"] = "fail"
-            self.results["counts_api"]["details"] = {"error": str(e)}
-            self.log(f"❌ Counts API failed: {str(e)}", "ERROR")
-    
-    def test_database_operations(self):
-        """Test database read operations for all databases"""
-        self.log("Testing Database Operations...")
-        
-        for db_key in DB_KEYS:
-            self.log(f"Testing {db_key} database operations...")
-            self.results["database_operations"][db_key] = {}
+            url = f"{self.backend_url}{endpoint}"
+            response = requests.request(method, url, timeout=30, **kwargs)
             
-            # Test pending users
+            # Try to parse JSON response
             try:
-                response = requests.get(f"{API_BASE}/{db_key}/pending", timeout=10)
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("success"):
-                        pending_data = data.get("data", [])
-                        self.results["database_operations"][db_key]["pending"] = {
-                            "status": "pass",
-                            "count": len(pending_data),
-                            "sample_data": pending_data[:2] if pending_data else []
-                        }
-                        self.log(f"  ✅ {db_key}/pending: {len(pending_data)} records")
-                        
-                        # Store some test data for CRUD operations
-                        if pending_data and db_key not in self.test_data:
-                            self.test_data[db_key] = {"pending_srs": [item.get("sr") for item in pending_data[:3]]}
-                    else:
-                        self.results["database_operations"][db_key]["pending"] = {
-                            "status": "fail",
-                            "error": "Success flag false"
-                        }
-                        self.log(f"  ❌ {db_key}/pending: Success flag false", "ERROR")
-                else:
-                    self.results["database_operations"][db_key]["pending"] = {
-                        "status": "fail",
-                        "error": f"HTTP {response.status_code}"
-                    }
-                    self.log(f"  ❌ {db_key}/pending: HTTP {response.status_code}", "ERROR")
-            except Exception as e:
-                self.results["database_operations"][db_key]["pending"] = {
-                    "status": "fail",
-                    "error": str(e)
-                }
-                self.log(f"  ❌ {db_key}/pending: {str(e)}", "ERROR")
+                data = response.json()
+            except:
+                data = {"text": response.text, "status_code": response.status_code}
             
-            # Test approved users
-            try:
-                response = requests.get(f"{API_BASE}/{db_key}/approved", timeout=10)
-                if response.status_code == 200:
-                    data = response.json()
-                    if data.get("success"):
-                        approved_data = data.get("data", [])
-                        self.results["database_operations"][db_key]["approved"] = {
-                            "status": "pass",
-                            "count": len(approved_data),
-                            "sample_data": approved_data[:2] if approved_data else []
-                        }
-                        self.log(f"  ✅ {db_key}/approved: {len(approved_data)} records")
-                        
-                        # Store approved SRs for CRUD operations
-                        if approved_data:
-                            if db_key not in self.test_data:
-                                self.test_data[db_key] = {}
-                            self.test_data[db_key]["approved_srs"] = [item.get("sr") for item in approved_data[:3]]
-                    else:
-                        self.results["database_operations"][db_key]["approved"] = {
-                            "status": "fail",
-                            "error": "Success flag false"
-                        }
-                        self.log(f"  ❌ {db_key}/approved: Success flag false", "ERROR")
-                else:
-                    self.results["database_operations"][db_key]["approved"] = {
-                        "status": "fail",
-                        "error": f"HTTP {response.status_code}"
-                    }
-                    self.log(f"  ❌ {db_key}/approved: HTTP {response.status_code}", "ERROR")
-            except Exception as e:
-                self.results["database_operations"][db_key]["approved"] = {
-                    "status": "fail",
-                    "error": str(e)
-                }
-                self.log(f"  ❌ {db_key}/approved: {str(e)}", "ERROR")
-            
-            # Test inactive users (neondb only)
-            if db_key == "neondb":
-                try:
-                    response = requests.get(f"{API_BASE}/neondb/inactive", timeout=10)
-                    if response.status_code == 200:
-                        data = response.json()
-                        if data.get("success"):
-                            inactive_data = data.get("data", [])
-                            self.results["database_operations"][db_key]["inactive"] = {
-                                "status": "pass",
-                                "count": len(inactive_data),
-                                "sample_data": inactive_data[:2] if inactive_data else []
-                            }
-                            self.log(f"  ✅ {db_key}/inactive: {len(inactive_data)} records")
-                            
-                            # Store inactive SRs for reactivation testing
-                            if inactive_data:
-                                if db_key not in self.test_data:
-                                    self.test_data[db_key] = {}
-                                self.test_data[db_key]["inactive_srs"] = [item.get("sr") for item in inactive_data[:3]]
-                        else:
-                            self.results["database_operations"][db_key]["inactive"] = {
-                                "status": "fail",
-                                "error": "Success flag false"
-                            }
-                            self.log(f"  ❌ {db_key}/inactive: Success flag false", "ERROR")
-                    else:
-                        self.results["database_operations"][db_key]["inactive"] = {
-                            "status": "fail",
-                            "error": f"HTTP {response.status_code}"
-                        }
-                        self.log(f"  ❌ {db_key}/inactive: HTTP {response.status_code}", "ERROR")
-                except Exception as e:
-                    self.results["database_operations"][db_key]["inactive"] = {
-                        "status": "fail",
-                        "error": str(e)
-                    }
-                    self.log(f"  ❌ {db_key}/inactive: {str(e)}", "ERROR")
+            return response.status_code < 400, {
+                "status_code": response.status_code,
+                "data": data
+            }
+        except Exception as e:
+            return False, {"error": str(e)}
     
-    def test_crud_operations(self):
-        """Test CRUD operations with actual data"""
-        self.log("Testing CRUD Operations...")
+    def test_health_endpoint(self):
+        """Test the new health check endpoint"""
+        print("\n=== TESTING HEALTH ENDPOINT ===")
         
-        # Test with databases that have data
-        test_databases = ["pmfby", "neondb"]  # Focus on these as mentioned in review request
+        success, response = self.make_request("GET", "/health")
         
-        for db_key in test_databases:
-            if db_key not in self.test_data:
-                self.log(f"  Skipping {db_key} CRUD tests - no test data available")
-                continue
-                
-            self.log(f"Testing {db_key} CRUD operations...")
-            self.results["crud_operations"][db_key] = {}
-            
-            db_test_data = self.test_data[db_key]
-            
-            # Test Approve operation
-            if "pending_srs" in db_test_data and db_test_data["pending_srs"]:
-                test_sr = db_test_data["pending_srs"][0]
-                if test_sr:
-                    try:
-                        response = requests.post(f"{API_BASE}/{db_key}/approve/{test_sr}", timeout=10)
-                        if response.status_code == 200:
-                            data = response.json()
-                            if data.get("success"):
-                                self.results["crud_operations"][db_key]["approve"] = {
-                                    "status": "pass",
-                                    "sr_tested": test_sr,
-                                    "message": data.get("message")
-                                }
-                                self.log(f"  ✅ {db_key}/approve/{test_sr}: Success")
-                            else:
-                                self.results["crud_operations"][db_key]["approve"] = {
-                                    "status": "fail",
-                                    "sr_tested": test_sr,
-                                    "error": "Success flag false"
-                                }
-                                self.log(f"  ❌ {db_key}/approve/{test_sr}: Success flag false", "ERROR")
-                        else:
-                            self.results["crud_operations"][db_key]["approve"] = {
-                                "status": "fail",
-                                "sr_tested": test_sr,
-                                "error": f"HTTP {response.status_code}"
-                            }
-                            self.log(f"  ❌ {db_key}/approve/{test_sr}: HTTP {response.status_code}", "ERROR")
-                    except Exception as e:
-                        self.results["crud_operations"][db_key]["approve"] = {
-                            "status": "fail",
-                            "sr_tested": test_sr,
-                            "error": str(e)
-                        }
-                        self.log(f"  ❌ {db_key}/approve/{test_sr}: {str(e)}", "ERROR")
-            
-            # Test Reject operation
-            if "pending_srs" in db_test_data and len(db_test_data["pending_srs"]) > 1:
-                test_sr = db_test_data["pending_srs"][1]
-                if test_sr:
-                    try:
-                        response = requests.post(f"{API_BASE}/{db_key}/reject/{test_sr}", timeout=10)
-                        if response.status_code == 200:
-                            data = response.json()
-                            if data.get("success"):
-                                self.results["crud_operations"][db_key]["reject"] = {
-                                    "status": "pass",
-                                    "sr_tested": test_sr,
-                                    "message": data.get("message")
-                                }
-                                self.log(f"  ✅ {db_key}/reject/{test_sr}: Success")
-                            else:
-                                self.results["crud_operations"][db_key]["reject"] = {
-                                    "status": "fail",
-                                    "sr_tested": test_sr,
-                                    "error": "Success flag false"
-                                }
-                                self.log(f"  ❌ {db_key}/reject/{test_sr}: Success flag false", "ERROR")
-                        else:
-                            self.results["crud_operations"][db_key]["reject"] = {
-                                "status": "fail",
-                                "sr_tested": test_sr,
-                                "error": f"HTTP {response.status_code}"
-                            }
-                            self.log(f"  ❌ {db_key}/reject/{test_sr}: HTTP {response.status_code}", "ERROR")
-                    except Exception as e:
-                        self.results["crud_operations"][db_key]["reject"] = {
-                            "status": "fail",
-                            "sr_tested": test_sr,
-                            "error": str(e)
-                        }
-                        self.log(f"  ❌ {db_key}/reject/{test_sr}: {str(e)}", "ERROR")
-            
-            # Test Deactivate operation
-            if "approved_srs" in db_test_data and db_test_data["approved_srs"]:
-                test_sr = db_test_data["approved_srs"][0]
-                if test_sr:
-                    try:
-                        response = requests.post(f"{API_BASE}/{db_key}/deactivate/{test_sr}", timeout=10)
-                        if response.status_code == 200:
-                            data = response.json()
-                            if data.get("success"):
-                                self.results["crud_operations"][db_key]["deactivate"] = {
-                                    "status": "pass",
-                                    "sr_tested": test_sr,
-                                    "message": data.get("message")
-                                }
-                                self.log(f"  ✅ {db_key}/deactivate/{test_sr}: Success")
-                            else:
-                                self.results["crud_operations"][db_key]["deactivate"] = {
-                                    "status": "fail",
-                                    "sr_tested": test_sr,
-                                    "error": "Success flag false"
-                                }
-                                self.log(f"  ❌ {db_key}/deactivate/{test_sr}: Success flag false", "ERROR")
-                        else:
-                            self.results["crud_operations"][db_key]["deactivate"] = {
-                                "status": "fail",
-                                "sr_tested": test_sr,
-                                "error": f"HTTP {response.status_code}"
-                            }
-                            self.log(f"  ❌ {db_key}/deactivate/{test_sr}: HTTP {response.status_code}", "ERROR")
-                    except Exception as e:
-                        self.results["crud_operations"][db_key]["deactivate"] = {
-                            "status": "fail",
-                            "sr_tested": test_sr,
-                            "error": str(e)
-                        }
-                        self.log(f"  ❌ {db_key}/deactivate/{test_sr}: {str(e)}", "ERROR")
-            
-            # Test Delete operation
-            if "approved_srs" in db_test_data and len(db_test_data["approved_srs"]) > 1:
-                test_sr = db_test_data["approved_srs"][1]
-                if test_sr:
-                    try:
-                        response = requests.delete(f"{API_BASE}/{db_key}/delete/{test_sr}", timeout=10)
-                        if response.status_code == 200:
-                            data = response.json()
-                            if data.get("success"):
-                                self.results["crud_operations"][db_key]["delete"] = {
-                                    "status": "pass",
-                                    "sr_tested": test_sr,
-                                    "message": data.get("message")
-                                }
-                                self.log(f"  ✅ {db_key}/delete/{test_sr}: Success")
-                            else:
-                                self.results["crud_operations"][db_key]["delete"] = {
-                                    "status": "fail",
-                                    "sr_tested": test_sr,
-                                    "error": "Success flag false"
-                                }
-                                self.log(f"  ❌ {db_key}/delete/{test_sr}: Success flag false", "ERROR")
-                        else:
-                            self.results["crud_operations"][db_key]["delete"] = {
-                                "status": "fail",
-                                "sr_tested": test_sr,
-                                "error": f"HTTP {response.status_code}"
-                            }
-                            self.log(f"  ❌ {db_key}/delete/{test_sr}: HTTP {response.status_code}", "ERROR")
-                    except Exception as e:
-                        self.results["crud_operations"][db_key]["delete"] = {
-                            "status": "fail",
-                            "sr_tested": test_sr,
-                            "error": str(e)
-                        }
-                        self.log(f"  ❌ {db_key}/delete/{test_sr}: {str(e)}", "ERROR")
-            
-            # Test Reactivate operation (neondb only)
-            if db_key == "neondb" and "inactive_srs" in db_test_data and db_test_data["inactive_srs"]:
-                test_sr = db_test_data["inactive_srs"][0]
-                if test_sr:
-                    try:
-                        response = requests.post(f"{API_BASE}/neondb/reactivate/{test_sr}", timeout=10)
-                        if response.status_code == 200:
-                            data = response.json()
-                            if data.get("success"):
-                                self.results["crud_operations"][db_key]["reactivate"] = {
-                                    "status": "pass",
-                                    "sr_tested": test_sr,
-                                    "message": data.get("message")
-                                }
-                                self.log(f"  ✅ {db_key}/reactivate/{test_sr}: Success")
-                            else:
-                                self.results["crud_operations"][db_key]["reactivate"] = {
-                                    "status": "fail",
-                                    "sr_tested": test_sr,
-                                    "error": "Success flag false"
-                                }
-                                self.log(f"  ❌ {db_key}/reactivate/{test_sr}: Success flag false", "ERROR")
-                        else:
-                            self.results["crud_operations"][db_key]["reactivate"] = {
-                                "status": "fail",
-                                "sr_tested": test_sr,
-                                "error": f"HTTP {response.status_code}"
-                            }
-                            self.log(f"  ❌ {db_key}/reactivate/{test_sr}: HTTP {response.status_code}", "ERROR")
-                    except Exception as e:
-                        self.results["crud_operations"][db_key]["reactivate"] = {
-                            "status": "fail",
-                            "sr_tested": test_sr,
-                            "error": str(e)
-                        }
-                        self.log(f"  ❌ {db_key}/reactivate/{test_sr}: {str(e)}", "ERROR")
+        if success:
+            data = response.get("data", {})
+            if "status" in data and "databases" in data:
+                db_status = data.get("databases", {})
+                connected_dbs = [db for db, status in db_status.items() if status == "connected"]
+                self.log_test("Health Check Endpoint", True, 
+                            f"Status: {data.get('status')}, Connected DBs: {len(connected_dbs)}/5")
+            else:
+                self.log_test("Health Check Endpoint", False, "Invalid response format")
+        else:
+            self.log_test("Health Check Endpoint", False, f"Request failed: {response}")
     
     def test_error_handling(self):
-        """Test error handling with invalid inputs"""
-        self.log("Testing Error Handling...")
-        error_tests = {}
+        """Test proper HTTP error status codes"""
+        print("\n=== TESTING ERROR HANDLING ===")
         
-        # Test invalid database key
-        try:
-            response = requests.get(f"{API_BASE}/invalid_db/pending", timeout=10)
-            error_tests["invalid_dbkey"] = {
-                "status_code": response.status_code,
-                "expected": 400,
-                "passed": response.status_code == 400
-            }
-            self.log(f"  Invalid dbkey test: HTTP {response.status_code} (expected 400)")
-        except Exception as e:
-            error_tests["invalid_dbkey"] = {
-                "status": "error",
-                "error": str(e)
-            }
-            self.log(f"  ❌ Invalid dbkey test failed: {str(e)}", "ERROR")
+        # Test invalid database key - should return 400, not 500
+        success, response = self.make_request("GET", "/invalid_db/pending")
         
-        # Test non-existent SR number
-        try:
-            response = requests.post(f"{API_BASE}/pmfby/approve/999999", timeout=10)
-            error_tests["invalid_sr"] = {
-                "status_code": response.status_code,
-                "expected": 404,
-                "passed": response.status_code == 404
-            }
-            self.log(f"  Invalid SR test: HTTP {response.status_code} (expected 404)")
-        except Exception as e:
-            error_tests["invalid_sr"] = {
-                "status": "error",
-                "error": str(e)
-            }
-            self.log(f"  ❌ Invalid SR test failed: {str(e)}", "ERROR")
+        expected_status = 400
+        actual_status = response.get("status_code", 0)
         
-        # Check if all error tests passed
-        all_passed = all(test.get("passed", False) for test in error_tests.values() if "passed" in test)
-        self.results["error_handling"]["status"] = "pass" if all_passed else "fail"
-        self.results["error_handling"]["details"] = error_tests
-        
-        if all_passed:
-            self.log("✅ Error handling tests passed")
+        if actual_status == expected_status:
+            self.log_test("Error Handling - Invalid DB Key", True, 
+                        f"Correctly returned HTTP {actual_status}")
         else:
-            self.log("❌ Some error handling tests failed", "ERROR")
+            self.log_test("Error Handling - Invalid DB Key", False, 
+                        f"Expected HTTP {expected_status}, got {actual_status}")
+        
+        # Test non-existent record - should return 404
+        success, response = self.make_request("POST", "/pmfby/approve/999999")
+        
+        expected_status = 404
+        actual_status = response.get("status_code", 0)
+        
+        if actual_status == expected_status:
+            self.log_test("Error Handling - Non-existent Record", True, 
+                        f"Correctly returned HTTP {actual_status}")
+        else:
+            self.log_test("Error Handling - Non-existent Record", False, 
+                        f"Expected HTTP {expected_status}, got {actual_status}")
+    
+    def get_counts(self) -> Dict[str, Dict[str, int]]:
+        """Get current counts for all databases"""
+        success, response = self.make_request("GET", "/counts")
+        if success:
+            return response.get("data", {}).get("data", {})
+        return {}
+    
+    def get_pending_records(self, dbkey: str) -> List[Dict]:
+        """Get pending records for a database"""
+        success, response = self.make_request("GET", f"/{dbkey}/pending")
+        if success:
+            return response.get("data", {}).get("data", [])
+        return []
+    
+    def get_approved_records(self, dbkey: str) -> List[Dict]:
+        """Get approved records for a database"""
+        success, response = self.make_request("GET", f"/{dbkey}/approved")
+        if success:
+            return response.get("data", {}).get("data", [])
+        return []
+    
+    def test_deactivate_operation(self):
+        """Test the CRITICAL deactivate operation that was previously broken"""
+        print("\n=== TESTING DEACTIVATE OPERATION (CRITICAL) ===")
+        
+        # Get initial counts
+        initial_counts = self.get_counts()
+        pmfby_initial = initial_counts.get("pmfby", {})
+        
+        print(f"Initial PMFBY counts: {pmfby_initial}")
+        
+        # Get an approved record to deactivate
+        approved_records = self.get_approved_records("pmfby")
+        
+        if not approved_records:
+            self.log_test("Deactivate Operation", False, "No approved records found to test deactivation")
+            return
+        
+        # Use the first approved record
+        test_record = approved_records[0]
+        test_sr = test_record.get("sr")
+        
+        print(f"Testing deactivation with SR: {test_sr}")
+        
+        # Attempt to deactivate
+        success, response = self.make_request("POST", f"/pmfby/deactivate/{test_sr}")
+        
+        if success:
+            # Check if counts changed correctly
+            new_counts = self.get_counts()
+            pmfby_new = new_counts.get("pmfby", {})
+            
+            pending_increased = pmfby_new.get("pending", 0) > pmfby_initial.get("pending", 0)
+            approved_decreased = pmfby_new.get("approved", 0) < pmfby_initial.get("approved", 0)
+            
+            if pending_increased and approved_decreased:
+                self.log_test("Deactivate Operation", True, 
+                            f"Successfully moved record from approved to pending. New counts: {pmfby_new}")
+            else:
+                self.log_test("Deactivate Operation", False, 
+                            f"Counts didn't change as expected. Before: {pmfby_initial}, After: {pmfby_new}")
+        else:
+            error_msg = response.get("data", {}).get("detail", "Unknown error")
+            self.log_test("Deactivate Operation", False, f"Deactivation failed: {error_msg}")
+    
+    def test_full_crud_flow(self):
+        """Test complete CRUD flow: Approve -> Deactivate -> Approve -> Reject"""
+        print("\n=== TESTING FULL CRUD FLOW ===")
+        
+        # Get initial state
+        initial_counts = self.get_counts()
+        pmfby_initial = initial_counts.get("pmfby", {})
+        
+        # Get a pending record to work with
+        pending_records = self.get_pending_records("pmfby")
+        
+        if not pending_records:
+            self.log_test("CRUD Flow Test", False, "No pending records found for CRUD flow test")
+            return
+        
+        test_record = pending_records[0]
+        test_sr = test_record.get("sr")
+        
+        print(f"Testing CRUD flow with SR: {test_sr}")
+        
+        # Step 1: Approve the pending record
+        success, response = self.make_request("POST", f"/pmfby/approve/{test_sr}")
+        
+        if not success:
+            self.log_test("CRUD Flow - Approve Step", False, f"Failed to approve: {response}")
+            return
+        
+        # Verify approval worked
+        counts_after_approve = self.get_counts()
+        pmfby_after_approve = counts_after_approve.get("pmfby", {})
+        
+        # Step 2: Deactivate the approved record
+        success, response = self.make_request("POST", f"/pmfby/deactivate/{test_sr}")
+        
+        if not success:
+            self.log_test("CRUD Flow - Deactivate Step", False, f"Failed to deactivate: {response}")
+            return
+        
+        # Verify deactivation worked
+        counts_after_deactivate = self.get_counts()
+        pmfby_after_deactivate = counts_after_deactivate.get("pmfby", {})
+        
+        # Step 3: Reject the record from pending
+        success, response = self.make_request("POST", f"/pmfby/reject/{test_sr}")
+        
+        if not success:
+            self.log_test("CRUD Flow - Reject Step", False, f"Failed to reject: {response}")
+            return
+        
+        # Verify final state
+        final_counts = self.get_counts()
+        pmfby_final = final_counts.get("pmfby", {})
+        
+        # Check if the flow worked correctly
+        approve_worked = pmfby_after_approve.get("approved", 0) > pmfby_initial.get("approved", 0)
+        deactivate_worked = pmfby_after_deactivate.get("pending", 0) > pmfby_after_approve.get("pending", 0)
+        reject_worked = pmfby_final.get("pending", 0) < pmfby_after_deactivate.get("pending", 0)
+        
+        if approve_worked and deactivate_worked and reject_worked:
+            self.log_test("Full CRUD Flow", True, 
+                        f"Complete flow successful. Final counts: {pmfby_final}")
+        else:
+            self.log_test("Full CRUD Flow", False, 
+                        f"Flow incomplete. Initial: {pmfby_initial}, Final: {pmfby_final}")
+    
+    def test_all_database_operations(self):
+        """Test basic operations on all 5 databases"""
+        print("\n=== TESTING ALL DATABASE OPERATIONS ===")
+        
+        databases = ["neondb", "pmfby", "krp", "byajanudan", "idpass"]
+        
+        for dbkey in databases:
+            print(f"\nTesting database: {dbkey}")
+            
+            # Test pending endpoint
+            success, response = self.make_request("GET", f"/{dbkey}/pending")
+            if success:
+                pending_count = len(response.get("data", {}).get("data", []))
+                self.log_test(f"{dbkey} - Pending Endpoint", True, f"Found {pending_count} pending records")
+            else:
+                self.log_test(f"{dbkey} - Pending Endpoint", False, f"Failed: {response}")
+            
+            # Test approved endpoint
+            success, response = self.make_request("GET", f"/{dbkey}/approved")
+            if success:
+                approved_count = len(response.get("data", {}).get("data", []))
+                self.log_test(f"{dbkey} - Approved Endpoint", True, f"Found {approved_count} approved records")
+            else:
+                self.log_test(f"{dbkey} - Approved Endpoint", False, f"Failed: {response}")
+        
+        # Test neondb inactive endpoint (DB1 only)
+        success, response = self.make_request("GET", "/neondb/inactive")
+        if success:
+            inactive_count = len(response.get("data", {}).get("data", []))
+            self.log_test("neondb - Inactive Endpoint", True, f"Found {inactive_count} inactive records")
+        else:
+            self.log_test("neondb - Inactive Endpoint", False, f"Failed: {response}")
+    
+    def test_idpass_specific(self):
+        """Test IDPass database specific functionality (user_name field)"""
+        print("\n=== TESTING IDPASS SPECIFIC FUNCTIONALITY ===")
+        
+        # Get IDPass records to verify user_name field handling
+        success, response = self.make_request("GET", "/idpass/approved")
+        
+        if success:
+            records = response.get("data", {}).get("data", [])
+            if records:
+                # Check if records have user_name field (not user_id)
+                sample_record = records[0]
+                has_user_name = "user_name" in sample_record
+                has_user_id = "user_id" in sample_record
+                
+                if has_user_name:
+                    self.log_test("IDPass - user_name Field", True, 
+                                f"Correctly uses user_name field. Sample: {sample_record.get('user_name')}")
+                else:
+                    self.log_test("IDPass - user_name Field", False, 
+                                f"Missing user_name field. Available fields: {list(sample_record.keys())}")
+            else:
+                self.log_test("IDPass - user_name Field", True, "No records to test, but endpoint works")
+        else:
+            self.log_test("IDPass - user_name Field", False, f"Failed to get IDPass records: {response}")
+    
+    def test_counts_api(self):
+        """Test the counts API"""
+        print("\n=== TESTING COUNTS API ===")
+        
+        success, response = self.make_request("GET", "/counts")
+        
+        if success:
+            data = response.get("data", {}).get("data", {})
+            if isinstance(data, dict) and len(data) == 5:
+                total_pending = sum(db.get("pending", 0) for db in data.values())
+                total_approved = sum(db.get("approved", 0) for db in data.values())
+                
+                self.log_test("Counts API", True, 
+                            f"All 5 databases present. Total pending: {total_pending}, approved: {total_approved}")
+                
+                # Print detailed counts
+                for dbkey, counts in data.items():
+                    print(f"   {dbkey}: {counts}")
+            else:
+                self.log_test("Counts API", False, f"Invalid counts data: {data}")
+        else:
+            self.log_test("Counts API", False, f"Failed: {response}")
     
     def run_all_tests(self):
-        """Run all test suites"""
-        self.log("=" * 60)
-        self.log("STARTING ADMIN PANEL BACKEND API TESTS")
-        self.log("=" * 60)
+        """Run all tests in the specified priority order"""
+        print("🚀 Starting Comprehensive Admin Panel Backend API Testing")
+        print(f"Backend URL: {self.backend_url}")
+        print("=" * 80)
         
-        # Run tests in order
-        self.test_health_check()
-        self.test_counts_api()
-        self.test_database_operations()
-        self.test_crud_operations()
+        # Test in priority order as specified in review request
+        self.test_health_endpoint()
         self.test_error_handling()
+        self.test_deactivate_operation()  # CRITICAL
+        self.test_full_crud_flow()
+        self.test_all_database_operations()
+        self.test_idpass_specific()
+        self.test_counts_api()
         
-        # Print summary
-        self.print_summary()
-    
-    def print_summary(self):
-        """Print test summary"""
-        self.log("=" * 60)
-        self.log("TEST SUMMARY")
-        self.log("=" * 60)
+        # Summary
+        print("\n" + "=" * 80)
+        print("🏁 TEST SUMMARY")
+        print("=" * 80)
         
-        # Health Check
-        status = self.results["health_check"]["status"]
-        self.log(f"Health Check: {'✅ PASS' if status == 'pass' else '❌ FAIL'}")
+        total_tests = len(self.test_results)
+        passed_tests = total_tests - len(self.failed_tests)
         
-        # Counts API
-        status = self.results["counts_api"]["status"]
-        self.log(f"Counts API: {'✅ PASS' if status == 'pass' else '❌ FAIL'}")
+        print(f"Total Tests: {total_tests}")
+        print(f"Passed: {passed_tests}")
+        print(f"Failed: {len(self.failed_tests)}")
+        print(f"Success Rate: {(passed_tests/total_tests)*100:.1f}%")
         
-        # Database Operations
-        db_results = []
-        for db_key, operations in self.results["database_operations"].items():
-            db_status = all(op.get("status") == "pass" for op in operations.values())
-            db_results.append(db_status)
-            self.log(f"Database Operations ({db_key}): {'✅ PASS' if db_status else '❌ FAIL'}")
+        if self.failed_tests:
+            print("\n❌ FAILED TESTS:")
+            for test in self.failed_tests:
+                print(f"   • {test['test']}: {test['details']}")
+        else:
+            print("\n🎉 ALL TESTS PASSED!")
         
-        # CRUD Operations
-        crud_results = []
-        for db_key, operations in self.results["crud_operations"].items():
-            crud_status = all(op.get("status") == "pass" for op in operations.values())
-            crud_results.append(crud_status)
-            self.log(f"CRUD Operations ({db_key}): {'✅ PASS' if crud_status else '❌ FAIL'}")
-        
-        # Error Handling
-        status = self.results["error_handling"]["status"]
-        self.log(f"Error Handling: {'✅ PASS' if status == 'pass' else '❌ FAIL'}")
-        
-        # Overall Status
-        overall_pass = (
-            self.results["health_check"]["status"] == "pass" and
-            self.results["counts_api"]["status"] == "pass" and
-            all(db_results) and
-            all(crud_results) and
-            self.results["error_handling"]["status"] == "pass"
-        )
-        
-        self.log("=" * 60)
-        self.log(f"OVERALL RESULT: {'✅ ALL TESTS PASSED' if overall_pass else '❌ SOME TESTS FAILED'}")
-        self.log("=" * 60)
-        
-        # Save detailed results
-        with open("/app/test_results_detailed.json", "w") as f:
-            json.dump(self.results, f, indent=2, default=str)
-        self.log("Detailed results saved to /app/test_results_detailed.json")
+        return len(self.failed_tests) == 0
 
 if __name__ == "__main__":
     tester = AdminPanelTester()
-    tester.run_all_tests()
+    success = tester.run_all_tests()
+    sys.exit(0 if success else 1)
