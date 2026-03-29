@@ -46,6 +46,8 @@ export default function AdminPanel() {
   const [actionLoading, setActionLoading] = useState<number | null>(null);
 
   useEffect(() => {
+    console.log('🔥 API_BASE_URL:', API_BASE_URL);
+    console.log('🔥 Full counts URL:', `${API_BASE_URL}/counts`);
     fetchCounts();
   }, []);
 
