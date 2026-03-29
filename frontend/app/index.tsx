@@ -99,10 +99,20 @@ export default function AdminPanel() {
     setTimeout(() => setToast(null), 3000);
   };
 
-  const confirmAction = (title: string, message: string, onConfirm: () => void) => {
+  const confirmAction = (title: string, message: string, onConfirm: () => Promise<void>) => {
     Alert.alert(title, message, [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Confirm', onPress: onConfirm, style: 'destructive' },
+      { 
+        text: 'Confirm', 
+        onPress: async () => {
+          try {
+            await onConfirm();
+          } catch (error) {
+            console.error('Confirmation action failed:', error);
+          }
+        }, 
+        style: 'destructive' 
+      },
     ]);
   };
 
